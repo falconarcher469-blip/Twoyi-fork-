@@ -22,8 +22,7 @@ jobs:
           cache: gradle
 
     
-
-                  - name: Install Android NDK 22.1.7171670 & Platform 34
+      - name: Install Android NDK 22.1.7171670 & Platform 34
         run: |
           SDKMGR=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)
           echo "$(dirname "$SDKMGR")" >> "$GITHUB_PATH"
