@@ -10,6 +10,8 @@ use std::mem;
 use std::thread;
 use uinput_sys::*;
 use uinput_sys::input_event;
+use uinput_sys::input_id;
+
 
 
 use once_cell::sync::Lazy;
