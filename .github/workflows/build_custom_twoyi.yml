@@ -1,0 +1,111 @@
+name: Build AetherTwoyi (POCO F6 arm64-v8a)
+
+on:
+  push:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build arm64-v8a Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK 22.1.7171670 & Platform 34
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "ndk;22.1.7171670" "platforms;android-34" "build-tools;35.0.0"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/22.1.7171670" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk/22.1.7171670" >> "$GITHUB_ENV"
+
+      - name: Install Rust & aarch64-linux-android target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install cargo-xdk
+        run: cargo install cargo-xdk --locked || cargo install cargo-xdk
+
+      - name: Verify & Fetch Guest rootfs.7z
+        run: |
+          mkdir -p app/src/main/assets
+          if [ ! -s app/src/main/assets/rootfs.7z ]; then
+            echo "Downloading rootfs.7z..."
+            curl -fL --retry 3 -o app/src/main/assets/rootfs.7z \
+              "https://github.com/falconarcher469-blip/twoyi-fork/releases/download/v1.0-assets%2C/rootfs.7z"
+          fi
+          test -s app/src/main/assets/rootfs.7z
+          if [ ! -s app/src/main/assets/rom.ini ] && command -v 7z >/dev/null 2>&1; then
+            7z e -y app/src/main/assets/rootfs.7z rootfs/rom.ini -oapp/src/main/assets/ || true
+          fi
+          ls -lh app/src/main/assets/
+
+      - name: Bundle Riru & LSPosed (Riru flavor) into xp_bundle.zip
+        run: |
+          mkdir -p /tmp/xp_stage/system/lib64 \
+                   /tmp/xp_stage/system/priv-app/LSPosed \
+                   /tmp/xp_stage/system/priv-app/Superuser \
+                   /tmp/xp_stage/data/adb/riru/modules/lspd \
+                   /tmp/xp_stage/data/adb/lspd
+
+          curl -fL --retry 3 -o /tmp/riru.zip \
+            "https://github.com/RikkaApps/Riru/releases/download/v26.1.7/riru-v26.1.7-release.zip"
+          curl -fL --retry 3 -o /tmp/lsposed.zip \
+            "https://github.com/LSPosed/LSPosed/releases/download/v1.8.6/LSPosed-v1.8.6-6712-riru-release.zip"
+
+          unzip -q -o /tmp/riru.zip -d /tmp/riru_unpack
+          unzip -q -o /tmp/lsposed.zip -d /tmp/lspd_unpack
+
+          # Stage Riru arm64 binaries & loader
+          find /tmp/riru_unpack -type f \( -name "libmemtrack.so" -o -name "libriru*.so" \) | grep -E "64|arm64" | while read -r f; do
+            cp -f "$f" /tmp/xp_stage/system/lib64/ || true
+          done
+          if [ -d /tmp/riru_unpack/riru ]; then
+            cp -rf /tmp/riru_unpack/riru/* /tmp/xp_stage/data/adb/riru/ || true
+          fi
+
+          # Stage LSPosed (Riru) module & manager APK
+          cp -rf /tmp/lspd_unpack/* /tmp/xp_stage/data/adb/lspd/ || true
+          if [ -f /tmp/lspd_unpack/manager.apk ]; then
+            cp -f /tmp/lspd_unpack/manager.apk /tmp/xp_stage/system/priv-app/LSPosed/LSPosed.apk
+          elif [ -f /tmp/lspd_unpack/LSPosed.apk ]; then
+            cp -f /tmp/lspd_unpack/LSPosed.apk /tmp/xp_stage/system/priv-app/LSPosed/LSPosed.apk
+          fi
+          if [ -f /tmp/lspd_unpack/riru.prop ]; then
+            cp -f /tmp/lspd_unpack/riru.prop /tmp/xp_stage/data/adb/riru/modules/lspd/module.prop
+          elif [ -f /tmp/lspd_unpack/module.prop ]; then
+            cp -f /tmp/lspd_unpack/module.prop /tmp/xp_stage/data/adb/riru/modules/lspd/module.prop
+          fi
+
+          (cd /tmp/xp_stage && zip -rq "$GITHUB_WORKSPACE/app/src/main/assets/xp_bundle.zip" .)
+          ls -lh app/src/main/assets/xp_bundle.zip
+
+      - name: Build Rust Native Core (arm64-v8a only)
+        run: |
+          chmod +x gradlew app/rs/build_rs.sh
+          ./gradlew :app:cargoBuild --no-daemon
+          test -s app/src/main/jniLibs/arm64-v8a/libtwoyi.so
+          ls -lh app/src/main/jniLibs/arm64-v8a/
+
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AetherTwoyi-arm64-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
