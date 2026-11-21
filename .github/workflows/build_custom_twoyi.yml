@@ -30,6 +30,10 @@ jobs:
           "$SDKMGR" "ndk;22.1.7171670" "platforms;android-34" "build-tools;35.0.0"
           echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/22.1.7171670" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk/22.1.7171670" >> "$GITHUB_ENV"
+                    for dir in "${ANDROID_HOME}/ndk/22.1.7171670/toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/"*/lib/linux/aarch64; do
+            echo "INPUT(-lgcc)" > "$dir/libunwind.a"
+          done
+          
           
           
 
