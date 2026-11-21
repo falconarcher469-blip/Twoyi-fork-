@@ -21,8 +21,7 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+    
 
       - name: Install Android NDK 22.1.7171670 & Platform 34
         run: |
