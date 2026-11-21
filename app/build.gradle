@@ -17,7 +17,7 @@ android {
     def buildSerial = new SimpleDateFormat("MMddHHmm").format(new Date())
 
     defaultConfig {
-        applicationId "io.twoyi.aether"
+        applicationId "io.twoyi"
         minSdkVersion 27
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 28
