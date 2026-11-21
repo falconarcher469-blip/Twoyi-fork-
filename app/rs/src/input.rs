@@ -11,6 +11,8 @@ use std::thread;
 use uinput_sys::*;
 use uinput_sys::input_event;
 use uinput_sys::input_id;
+use uinput_sys::{ABS_CNT, ABS_MAX, INPUT_PROP_MAX, KEY_MAX, LED_MAX, REL_MAX, SW_MAX};
+
 
 
 
