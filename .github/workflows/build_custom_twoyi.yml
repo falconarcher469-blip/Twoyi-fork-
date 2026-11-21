@@ -63,11 +63,11 @@ jobs:
                    /tmp/xp_stage/data/adb/riru/modules/lspd \
                    /tmp/xp_stage/data/adb/lspd
 
-          curl -fL --retry 3 -o /tmp/riru.zip \
-            "https://github.com/RikkaApps/Riru/releases/download/v26.1.7/riru-v26.1.7-release.zip"
-          curl -fL --retry 3 -o /tmp/lsposed.zip \
-            "https://github.com/LSPosed/LSPosed/releases/download/v1.8.6/LSPosed-v1.8.6-6712-riru-release.zip"
-
+                    RIRU_URL=$(curl -fsSL https://api.github.com/repos/RikkaApps/Riru/releases/latest | grep -oE 'https://[^"]+riru-[^"]+-release\.zip' | head -n 1)
+          LSP_URL=$(curl -fsSL https://api.github.com/repos/LSPosed/LSPosed/releases/latest | grep -oE 'https://[^"]+LSPosed-[^"]+-riru-release\.zip' | head -n 1)
+          curl -fL --retry 3 -o /tmp/riru.zip "$RIRU_URL"
+          curl -fL --retry 3 -o /tmp/lsposed.zip "$LSP_URL"
+          
           unzip -q -o /tmp/riru.zip -d /tmp/riru_unpack
           unzip -q -o /tmp/lsposed.zip -d /tmp/lspd_unpack
 
